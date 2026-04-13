@@ -11,7 +11,7 @@ Foreach ($U in $Unique)
 $User = $U.SamAccountName
 If (Get-ADUser -Identity $U.SamAccountName -ErrorAction SilentlyContinue)
 {
-Echo "$User - Already exists" >> $home\desktop\Unique.csv 
+Echo "$User - Already exists" >> $home\desktop\USER-CONFLICTS.csv
 }
 
 # TO-DO: Validate headers in csv-file before running
