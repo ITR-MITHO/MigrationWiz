@@ -1,10 +1,18 @@
+# Change the variables to match your environment and use the script in a elevated PowerShell
 Import-Module ActiveDirectory
 $ImportPath = "$Home\Desktop\ADUserExport.csv"
 $OutputPath = "$Home\Desktop\NewUsersWithPasswords.csv"
-
-## Change these to ensure the correct OU is chosen and the correct domain is used when creating! ##
 $OU = "OU=users,DC=contoso,DC=local"
 $Domain = "itm8exchangetest.dk"
+
+$Unique = Import-csv $ImportPath
+Foreach ($U in $Unique)
+{
+$User = $U.SamAccountName
+If (Get-ADUser -Identity $U.SamAccountName -ErrorAction SilentlyContinue)
+{
+Echo "$User - Already exists" >> $home\desktop\Unique.csv 
+}
 
 # Generate random 16 character password
 function New-RandomPassword {
