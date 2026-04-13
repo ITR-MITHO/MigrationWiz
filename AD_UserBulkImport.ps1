@@ -14,6 +14,9 @@ If (Get-ADUser -Identity $U.SamAccountName -ErrorAction SilentlyContinue)
 Echo "$User - Already exists" >> $home\desktop\Unique.csv 
 }
 
+# TO-DO: Validate headers in csv-file before running
+
+
 # Generate random 16 character password
 function New-RandomPassword {
     param ([int]$Length = 16)
