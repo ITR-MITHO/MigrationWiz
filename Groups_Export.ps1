@@ -13,6 +13,8 @@ NOTE: Use Connect-ExchangeOnline if you need to access the ExchangeOnline cmdlet
 Add-PSSnapin *EXC*
 Import-Module ActiveDirectory
 
+# TO-DO: LOOK FOR CONFLICTING OBJECTS
+
 $Groups = Get-DistributionGroup | Select SamAccountName, Alias, DisplayName, PrimarySMTPAddress, RecipientType, {$_.EmailAddresses}, Description
 $Groups | Export-csv $home\desktop\Groups.csv -NoTypeInformation -Encoding Unicode
 $Data = Import-Csv $home\desktop\Groups.csv
