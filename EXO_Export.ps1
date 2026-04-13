@@ -1,7 +1,7 @@
 # Start by using Connect-ExchangeOnline to gain access to ExchangeOnline cmdlets
 
 $CSVPATH = "$Home\Desktop\MailboxExport.csv"
-$Mailboxes = $Mailboxes = Get-Mailbox -ResultSize Unlimited | Where {$_.RecipientTypeDetails -NE "DiscoveryMailbox"}
+$Mailboxes = Get-Mailbox -ResultSize Unlimited | Where {$_.RecipientTypeDetails -NE "DiscoveryMailbox"}
 $Results = @()
 Write-Host "It is estimated to take 10-15 minutes for large organisations. Grab a nice cup of coffee :-)" -ForegroundColor Yellow
 Foreach ($Mailbox in $Mailboxes)
