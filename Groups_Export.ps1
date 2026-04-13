@@ -1,10 +1,13 @@
-<# The script can be used in both on-premises Exchange and in Exchange Online. 
+<# 
+
+The script can be used in both on-premises Exchange and in Exchange Online. 
 2 files are exported once the scripts completes: 
 
 Groups: Contains all group information for bulk creation
 GroupMembership: Contains all membership information
 
-Use Connect-ExchangeOnline if you need to access the ExchangeOnline cmdlets
+NOTE: Use Connect-ExchangeOnline if you need to access the ExchangeOnline cmdlets
+
 #>
 
 Add-PSSnapin *EXC*
