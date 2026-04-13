@@ -39,6 +39,7 @@ Department = ($User).Department
 Manager = if ($User.Manager) {(Get-ADUser -Identity $User.Manager -Properties SamAccountName).SamAccountName} else {""}
 TelephoneNumber = ($User).TelephoneNumber
 Mobile = ($User).Mobile
+# TO-DO: OU information
 
 }
 $ExportList += $Collection
