@@ -26,14 +26,12 @@ $GroupDes = $D.Description
 $User = Get-DistributionGroupMember -Identity $GroupName | Select SamAccountName, DisplayName, PrimarySMTPAddress
 
 Foreach ($U in $User)
-
 {
-
 $Results += [PSCustomObject]@{
-                Group = $GroupName
-                User = $U.SamAccountName               
-                UserDisplay = $U.DisplayName
-                UserEmail = $U.PrimarySMTPAddress
+Group = $GroupName
+User = $U.SamAccountName               
+UserDisplay = $U.DisplayName
+UserEmail = $U.PrimarySMTPAddress
 
 }
     }
