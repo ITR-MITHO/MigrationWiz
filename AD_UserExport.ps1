@@ -5,7 +5,6 @@ Write-Host "Start PowerShell as an Administrator" -ForegroundColor Red
 Break
 }
 
-Write-Host "The script can take up to two minutes to complete." -ForegroundColor Yellow
 Import-Module ActiveDirectory
 $UserList = Get-ADuser -filter * -Properties *
 $ExportList = @()
@@ -23,9 +22,10 @@ foreach ($User in $UserList) {
         17179869184 {$MailboxValue = "RemoteEquipmentMailbox"}
         34359738368 {$MailboxValue = "RemoteSharedMailbox"}
         default {$MailboxValue = ""}
+
       }
 
-
+$OU = $User | Select @{n='OU';e={$_.DistinguishedName -replace '^.+?,(CN|OU.+)','$1'}} -ErrorAction SilentlyContinue
 $Collection = New-Object PSObject -Property @{
 
 DisplayName = ($User).DisplayName
@@ -39,14 +39,15 @@ Department = ($User).Department
 Manager = if ($User.Manager) {(Get-ADUser -Identity $User.Manager -Properties SamAccountName).SamAccountName} else {""}
 TelephoneNumber = ($User).TelephoneNumber
 Mobile = ($User).Mobile
-# TO-DO: OU information
+OU = $OU.OU
+Proxy = ($User.ProxyAddresses -join ";")
+
 
 }
 $ExportList += $Collection
 }
 
 # Select fields in specific order rather than random.
-$ExportList | Select DisplayName, SamAccountName, Description, PasswordNeverExpires, Enabled, MailType, Title, Department, Manager, TelephoneNumber, Mobile  | 
+$ExportList | Select DisplayName, SamAccountName, Description, PasswordNeverExpires, Enabled, MailType, Title, Department, Manager, TelephoneNumber, Mobile, OU, Proxy  | 
 Export-csv $Home\Desktop\ADUserExport.csv -NoTypeInformation -Encoding Unicode
-
 Write-Host "Script completed. Find your export here: $Home\Desktop\ADUserExport.csv" -ForegroundColor Green
