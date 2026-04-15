@@ -45,7 +45,7 @@ $Data = @{
     Retention = $Mailbox.RetentionPolicy
     Forward = $Mailbox.ForwardingAddress
     DirSync = $DirSync
-    MOA = ($Mailbox.EmailAddresses | Where-Object { $_ -match "^(SMTP|smtp):[^@]+@[A-Za-z0-9-]+\.onmicrosoft\.com$" } | ForEach-Object { ($_ -split ":")[1] }) -join ";"
+    MOERA = ($Mailbox.EmailAddresses | Where-Object { $_ -match "^(SMTP|smtp):[^@]+@[A-Za-z0-9-]+\.onmicrosoft\.com$" } | ForEach-Object { ($_ -split ":")[1] }) -join ";"
     Proxy = $Mailbox.EmailAddresses
 }   
 $Results += New-Object PSObject -Property $Data
