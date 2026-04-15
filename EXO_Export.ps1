@@ -1,5 +1,4 @@
 # Start by using Connect-ExchangeOnline to gain access to ExchangeOnline cmdlets
-
 $CSVPATH = "$Home\Desktop\MailboxExport.csv"
 $Mailboxes = Get-Mailbox -ResultSize Unlimited | Where {$_.RecipientTypeDetails -NE "DiscoveryMailbox"}
 $Results = @()
@@ -36,20 +35,21 @@ Else
 }
 
 $Data = @{
-    Username = $Mailbox.Alias
-    Name = $Mailbox.DisplayName
-    Email = $Mailbox.PrimarySmtpAddress
-    Type = $Mailbox.RecipientTypeDetails
-    MailboxSizeMB = $SizeInMB
-    ArchiveSizeMB = $ArchiveInMB
-    Retention = $Mailbox.RetentionPolicy
-    Forward = $Mailbox.ForwardingAddress
-    DirSync = $DirSync
-    MOERA = ($Mailbox.EmailAddresses | Where-Object { $_ -match "^(SMTP|smtp):[^@]+@[A-Za-z0-9-]+\.onmicrosoft\.com$" } | ForEach-Object { ($_ -split ":")[1] }) -join ";"
-    Proxy = $Mailbox.EmailAddresses
+        Username = $Mailbox.Alias
+        Name = $Mailbox.DisplayName
+        Email = $Mailbox.PrimarySmtpAddress
+        Type = $Mailbox.RecipientTypeDetails
+        MailboxSizeMB = $SizeInMB
+        ArchiveSizeMB = $ArchiveInMB
+        Retention = $Mailbox.RetentionPolicy
+        Forward = $Mailbox.ForwardingAddress
+        DirSync = $DirSync
+        MOERA = ($Mailbox.EmailAddresses | Where-Object { $_ -match "^(SMTP|smtp):[^@]+@[A-Za-z0-9-]+\.onmicrosoft\.com$" } | ForEach-Object { ($_ -split ":")[1] }) -join ";"
+        Proxy = $Mailbox.EmailAddresses
 }   
 $Results += New-Object PSObject -Property $Data
 }
+
 # Selecting the fields in a specific order instead of random.
 $Results | Select-Object Username, Name, Email, Type, MailboxSizeMB, ArchiveSizeMB, Retention, Forward, DirSync, MOERA, Proxy | 
 Export-csv $CSVPATH -NoTypeInformation -Encoding Unicode
