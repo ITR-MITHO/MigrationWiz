@@ -10,27 +10,22 @@ NOTE: Use Connect-ExchangeOnline if you need to access the ExchangeOnline cmdlet
 
 #>
 
-Add-PSSnapin *EXC*
-Import-Module ActiveDirectory
-
-# TO-DO: LOOK FOR CONFLICTING OBJECTS
-
 $Groups = Get-DistributionGroup | Select SamAccountName, Alias, DisplayName, PrimarySMTPAddress, RecipientType, {$_.EmailAddresses}, Description
 $Groups | Export-csv $home\desktop\Groups.csv -NoTypeInformation -Encoding Unicode
-$Data = Import-Csv $home\desktop\Groups.csv
 $Results = @()
 
-
-Foreach ($D in $Data)
+Foreach ($Group in $Groups)
 {
-$GroupName = $D.Alias
-$GroupDes = $D.Description
-$User = Get-DistributionGroupMember -Identity $GroupName | Select SamAccountName, DisplayName, PrimarySMTPAddress
+$GroupName = $Group.Alias
+$GroupEmail = ($Group.PrimarySMTPAddress)
+$GroupDes = $Group.Description
+$User = Get-DistributionGroupMember -Identity $Guid | Select SamAccountName, DisplayName, PrimarySMTPAddress
 
 Foreach ($U in $User)
 {
 $Results += [PSCustomObject]@{
 Group = $GroupName
+GroupEmail = $GroupEmail
 User = $U.SamAccountName               
 UserDisplay = $U.DisplayName
 UserEmail = $U.PrimarySMTPAddress
