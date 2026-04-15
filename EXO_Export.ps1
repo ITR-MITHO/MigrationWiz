@@ -51,7 +51,7 @@ $Data = @{
 $Results += New-Object PSObject -Property $Data
 }
 # Selecting the fields in a specific order instead of random.
-$Results | Select-Object Username, Name, Email, Type, MailboxSizeMB, ArchiveSizeMB, Retention, Forward, DirSync, MOA, Proxy | 
+$Results | Select-Object Username, Name, Email, Type, MailboxSizeMB, ArchiveSizeMB, Retention, Forward, DirSync, MOERA, Proxy | 
 Export-csv $CSVPATH -NoTypeInformation -Encoding Unicode
 CLS
 Write-Host "Find your .csv-file here: $CSVPATH" -ForegroundColor Green
