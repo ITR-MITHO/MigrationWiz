@@ -1,57 +1,67 @@
-# Start by using Connect-ExchangeOnline to gain access to ExchangeOnline cmdlets
+<#
+.SYNOPSIS
+    Exchange Online Mailbox Information Export.
+.DESCRIPTION
+    Uses high-performance modern Exchange Online V3 cmdlets to retrieve 
+    mailbox statistics, archive data, and directory status via bulk operations.
+#>
+
 $CSVPATH = "$Home\Desktop\MailboxExport.csv"
-$Mailboxes = Get-Mailbox -ResultSize Unlimited | Where {$_.RecipientTypeDetails -NE "DiscoveryMailbox"}
-$Results = @()
-Write-Host "It is estimated to take 10-15 minutes for large organisations. Grab a nice cup of coffee :-)" -ForegroundColor Yellow
-Foreach ($Mailbox in $Mailboxes)
-{
-$Archive = Get-MailboxStatistics -Identity $Mailbox.SamAccountName -Archive -ErrorAction SilentlyContinue | Select TotalItemSize
-If ($Archive)
-{
-    $ArchiveInMB = [math]::Round(([long]((($Archive.TotalItemSize.Value -split "\(")[1] -split " ")[0] -split "," -join ""))/[math]::Pow(1024,3),3)
-}
-else
-{
-    $ArchiveInMB = "No Archive"
+
+Write-Host "Starting data retrieval. Processing in bulk pipelines..." -ForegroundColor Yellow
+$Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+# 1. Fetch only the exact properties needed via fast V3 cmdlet.
+# We explicitly request 'EmailAddresses' to avoid loading unneeded structural properties.
+Write-Host "Fetching basic mailbox structures..." -ForegroundColor Cyan
+$Mailboxes = Get-EXOMailbox -ResultSize Unlimited -Property EmailAddresses, RetentionPolicy, ForwardingAddress, IsDirSynced `
+    | Where-Object { $_.RecipientTypeDetails -ne "DiscoveryMailbox" }
+
+$TotalCount = $Mailboxes.Count
+Write-Host "Found $TotalCount mailboxes. Building tables..." -ForegroundColor Cyan
+
+$StatsTable   = @{}
+$ArchiveTable = @{}
+
+Write-Host "Retrieving primary mailbox statistics in bulk..." -ForegroundColor Cyan
+Get-EXOMailboxStatistics -ResultSize Unlimited | ForEach-Object {
+    $StatsTable[$_.ExternalDirectoryObjectId] = $_.TotalItemSize.Value.ToBytes()
 }
 
-$Statistics = Get-MailboxStatistics -Identity $Mailbox.SamAccountName | Select TotalItemSize
-if ($Statistics) 
-{
-    $SizeInMB =  [math]::Round(([long]((($Statistics.TotalItemSize.Value -split "\(")[1] -split " ")[0] -split "," -join ""))/[math]::Pow(1024,3),3)
-} 
-else 
-{
-    $SizeInMB = "0"
+Write-Host "Retrieving archive mailbox statistics in bulk..." -ForegroundColor Cyan
+Get-EXOMailboxStatistics -ResultSize Unlimited -Archive | ForEach-Object {
+    $ArchiveTable[$_.ExternalDirectoryObjectId] = $_.TotalItemSize.Value.ToBytes()
 }
 
-If ($Mailbox.IsDirSynced -Eq "True")
-{
-    $DirSync = "Yes"
-}
-Else
-{
-    $DirSync = "No"
+Write-Host "Processing attributes and calculating sizes..." -ForegroundColor Cyan
+$Results = foreach ($Mailbox in $Mailboxes) {
+    $PrimaryBytes = $StatsTable[$Mailbox.ExternalDirectoryObjectId]
+    $ArchiveBytes = $ArchiveTable[$Mailbox.ExternalDirectoryObjectId]
+    $SizeInMB    = $PrimaryBytes ? [math]::Round($PrimaryBytes / 1MB, 3) : 0
+    $ArchiveInMB = $ArchiveBytes ? [math]::Round($ArchiveBytes / 1MB, 3) : "No Archive"
+    $DirSync = $Mailbox.IsDirSynced -eq $true ? "Yes" : "No"
+    $MoeraAddress = ($Mailbox.EmailAddresses | Where-Object { $_ -like "*onmicrosoft.com" }) -join ";"
+
+    [PSCustomObject]@{
+        Username       = $Mailbox.Alias
+        Name           = $Mailbox.DisplayName
+        Email          = $Mailbox.PrimarySmtpAddress
+        Type           = $Mailbox.RecipientTypeDetails
+        MailboxSizeMB  = $SizeInMB
+        ArchiveSizeMB  = $ArchiveInMB
+        Retention      = $Mailbox.RetentionPolicy
+        Forward        = $Mailbox.ForwardingAddress
+        DirSync        = $DirSync
+        MOERA          = $MoeraAddress
+        Proxy          = ($Mailbox.EmailAddresses -join ';')
+    }
 }
 
-$Data = @{
-        Username = $Mailbox.Alias
-        Name = $Mailbox.DisplayName
-        Email = $Mailbox.PrimarySmtpAddress
-        Type = $Mailbox.RecipientTypeDetails
-        MailboxSizeMB = $SizeInMB
-        ArchiveSizeMB = $ArchiveInMB
-        Retention = $Mailbox.RetentionPolicy
-        Forward = $Mailbox.ForwardingAddress
-        DirSync = $DirSync
-        MOERA = ($Mailbox.EmailAddresses | Where-Object { $_ -match "^(SMTP|smtp):[^@]+@[A-Za-z0-9-]+\.onmicrosoft\.com$" } | ForEach-Object { ($_ -split ":")[1] }) -join ";"
-        Proxy = $Mailbox.EmailAddresses
-}   
-$Results += New-Object PSObject -Property $Data
-}
 
-# Selecting the fields in a specific order instead of random.
-$Results | Select-Object Username, Name, Email, Type, MailboxSizeMB, ArchiveSizeMB, Retention, Forward, DirSync, MOERA, Proxy | 
-Export-csv $CSVPATH -NoTypeInformation -Encoding Unicode
-CLS
+Write-Host "Exporting to CSV..." -ForegroundColor Cyan
+$Results | Export-Csv $CSVPATH -NoTypeInformation -Encoding Unicode
+
+$Stopwatch.Stop()
+Clear-Host
 Write-Host "Find your .csv-file here: $CSVPATH" -ForegroundColor Green
+Write-Host "Execution finished in $($Stopwatch.Elapsed.TotalMinutes.ToString('F2')) minutes for $TotalCount mailboxes." -ForegroundColor Gray
