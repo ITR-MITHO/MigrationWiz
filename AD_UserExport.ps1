@@ -1,53 +1,76 @@
-$currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-If (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
-{
-Write-Host "Start PowerShell as an Administrator" -ForegroundColor Red
-Break
+# ---------------------------------------------------------
+# CONFIGURATION & RECIPIENT TYPE MAPPING
+# ---------------------------------------------------------
+$CSVPATH = "$Home\Desktop\ADUserExport.csv"
+$RequiredProperties = @(
+    'DisplayName', 'Description', 'PasswordNeverExpires', 'Enabled', 
+    'msExchRecipientTypeDetails', 'Title', 'Department', 'Manager', 
+    'TelephoneNumber', 'Mobile', 'ProxyAddresses'
+)
+$MailboxTypeMap = @{
+    1           = "UserMailbox"
+    2           = "LinkedMailbox"
+    4           = "SharedMailbox"
+    16          = "RoomMailbox"
+    32          = "EquipmentMailbox"
+    128         = "MailUser"
+    2147483648  = "RemoteUserMailbox"
+    8589934592  = "RemoteRoomMailbox"
+    17179869184 = "RemoteEquipmentMailbox"
+    34359738368 = "RemoteSharedMailbox"
 }
 
+# ---------------------------------------------------------
+# MAIN EXECUTION
+# ---------------------------------------------------------
 Import-Module ActiveDirectory
-$UserList = Get-ADuser -filter * -Properties *
-$ExportList = @()
 
-foreach ($User in $UserList) {
-    switch ($User.msExchRecipientTypeDetails) {
-        1 {$MailboxValue = "UserMailbox"}
-        2 {$MailboxValue = "LinkedMailbox"}
-        4 {$MailboxValue = "SharedMailbox"}
-        16 {$MailboxValue = "RoomMailbox"}
-        32 {$MailboxValue = "EquipmentMailbox"}
-        128 {$MailboxValue = "MailUser"}
-        2147483648 {$MailboxValue = "RemoteUserMailbox"}
-        8589934592 {$MailboxValue = "RemoteRoomMailbox"}
-        17179869184 {$MailboxValue = "RemoteEquipmentMailbox"}
-        34359738368 {$MailboxValue = "RemoteSharedMailbox"}
-        default {$MailboxValue = ""}
+Write-Host "Fetching targeted Active Directory user data..." -ForegroundColor Yellow
+$Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
-      }
+$UserList = Get-ADUser -Filter * -Properties $RequiredProperties
+$TotalCount = $UserList.Count
 
-$OU = $User | Select @{n='OU';e={$_.DistinguishedName -replace '^.+?,(CN|OU.+)','$1'}} -ErrorAction SilentlyContinue
-$Collection = New-Object PSObject -Property @{
+Write-Host "Processing $TotalCount users..." -ForegroundColor Yellow
+$ExportList = foreach ($User in $UserList) {
 
-DisplayName = ($User).DisplayName
-SamAccountName = ($User).SamAccountName
-Description = ($User).Description
-PasswordNeverExpires = ($User).PasswordNeverExpires
-Enabled = ($User).Enabled
-MailType = $MailboxValue
-Title = ($User).Title
-Department = ($User).Department
-Manager = if ($User.Manager) {(Get-ADUser -Identity $User.Manager -Properties SamAccountName).SamAccountName} else {""}
-TelephoneNumber = ($User).TelephoneNumber
-Mobile = ($User).Mobile
-OU = $OU.OU
-Proxy = ($User.ProxyAddresses -join ";")
+    $MailboxValue = $null
+    if ($User.msExchRecipientTypeDetails) {
+        $MailboxValue = $MailboxTypeMap[[long]$User.msExchRecipientTypeDetails]
+    }
+    if (-not $MailboxValue) { $MailboxValue = "" }
 
+    $OU = $null
+    if ($User.DistinguishedName -match '(?<=,)(?:OU|CN)=.+') {
+        $OU = $Matches[0]
+    }
 
+    $ManagerSam = ""
+    if ($User.Manager -and $User.Manager -match '^CN=(?<sam>[^,]+)') {
+        $ManagerSam = $Matches['sam']
+    }
+    [PSCustomObject]@{
+        DisplayName          = $User.DisplayName
+        SamAccountName       = $User.SamAccountName
+        Description          = $User.Description
+        PasswordNeverExpires = $User.PasswordNeverExpires
+        Enabled              = $User.Enabled
+        MailType             = $MailboxValue
+        Title                = $User.Title
+        Department           = $User.Department
+        Manager              = $ManagerSam
+        TelephoneNumber      = $User.TelephoneNumber
+        Mobile               = $User.Mobile
+        OU                   = $OU
+        Proxy                = ($User.ProxyAddresses -join ";")
+    }
 }
-$ExportList += $Collection
-}
 
-# Select fields in specific order rather than random.
-$ExportList | Select DisplayName, SamAccountName, Description, PasswordNeverExpires, Enabled, MailType, Title, Department, Manager, TelephoneNumber, Mobile, OU, Proxy  | 
-Export-csv $Home\Desktop\ADUserExport.csv -NoTypeInformation -Encoding Unicode
-Write-Host "Script completed. Find your export here: $Home\Desktop\ADUserExport.csv" -ForegroundColor Green
+# ---------------------------------------------------------
+# EXPORT
+# ---------------------------------------------------------
+Write-Host "Exporting to CSV..." -ForegroundColor Yellow
+$ExportList | Export-Csv $CSVPATH -NoTypeInformation -Encoding Unicode
+
+$Stopwatch.Stop()
+Write-Host "Script completed in $($Stopwatch.Elapsed.TotalSeconds.ToString('F2')) seconds. Find your export here: $CSVPATH" -ForegroundColor Green
