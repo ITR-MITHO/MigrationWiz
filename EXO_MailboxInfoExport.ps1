@@ -10,9 +10,6 @@ $CSVPATH = "$Home\Desktop\MailboxExport.csv"
 
 Write-Host "Starting data retrieval. Processing in bulk pipelines..." -ForegroundColor Yellow
 $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-
-# 1. Fetch only the exact properties needed via fast V3 cmdlet.
-# We explicitly request 'EmailAddresses' to avoid loading unneeded structural properties.
 Write-Host "Fetching basic mailbox structures..." -ForegroundColor Cyan
 $Mailboxes = Get-EXOMailbox -ResultSize Unlimited -Property EmailAddresses, RetentionPolicy, ForwardingAddress, IsDirSynced `
     | Where-Object { $_.RecipientTypeDetails -ne "DiscoveryMailbox" }
