@@ -1,7 +1,9 @@
 <#
-
+.SYNOPSIS
     Exchange Online Mailbox Information Export.
-
+.DESCRIPTION
+    Uses high-performance modern Exchange Online V3 cmdlets to retrieve 
+    mailbox statistics, archive data, and directory status via bulk operations.
 #>
 
 $CSVPATH = "$Home\Desktop\MailboxExport.csv"
@@ -41,13 +43,13 @@ $Results = foreach ($Mailbox in $Mailboxes) {
     $PrimaryBytes = $StatsTable[$GuidString]
     $ArchiveBytes = $ArchiveTable[$GuidString]
     
-    # FIXED: Changed rounding to 0 decimal places to output whole numbers
     $SizeInMB    = if ($PrimaryBytes) { [math]::Round($PrimaryBytes / 1MB, 0) } else { 0 }
     $ArchiveInMB = if ($ArchiveBytes) { [math]::Round($ArchiveBytes / 1MB, 0) } else { "No Archive" }
     
     $DirSync = if ($Mailbox.IsDirSynced -eq $true) { "Yes" } else { "No" }
     
-    $MoeraAddress = ($Mailbox.EmailAddresses | Where-Object { $_ -like "*onmicrosoft.com" } | Select-Object -First 1) -replace '(?i)^smtp:', ''
+    $MoeraRaw = ($Mailbox.EmailAddresses | Where-Object { $_ -like "*onmicrosoft.com" } | Select-Object -First 1) -replace '(?i)^smtp:', ''
+    $MoeraAddress = if ($MoeraRaw) { $MoeraRaw } else { "MISSING FIX IT MANUALLY" }
 
     $DestinationEmail = if ($Mailbox.Alias -and $Destination) { "$($Mailbox.Alias)@$Destination" } else { "" }
 
@@ -61,6 +63,8 @@ $Results = foreach ($Mailbox in $Mailboxes) {
         Retention              = $Mailbox.RetentionPolicy
         Forward                = $Mailbox.ForwardingAddress
         DirSync                = $DirSync
+        MOERA                  = $MoeraAddress
+        Proxy                  = ($Mailbox.EmailAddresses -join ';')
         "Source Email"         = $MoeraAddress
         "Source Login Name"    = ""
         "Source Password"      = ""
@@ -68,12 +72,10 @@ $Results = foreach ($Mailbox in $Mailboxes) {
         "Destination Login Name" = ""
         "Destination Password" = ""
         Flags                  = ""
-        Proxy                  = ($Mailbox.EmailAddresses -join ';')
     }
 }
 
 Write-Host "Exporting to CSV..." -ForegroundColor Cyan
-# FIXED: Added -UseCulture to force proper delimiter handling for Excel
 $Results | Export-Csv $CSVPATH -NoTypeInformation -Encoding Unicode -UseCulture
 
 $Stopwatch.Stop()
