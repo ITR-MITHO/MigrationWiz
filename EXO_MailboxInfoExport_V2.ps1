@@ -63,7 +63,6 @@ $Results = foreach ($Mailbox in $Mailboxes) {
         Retention              = $Mailbox.RetentionPolicy
         Forward                = $Mailbox.ForwardingAddress
         DirSync                = $DirSync
-        MOERA                  = $MoeraAddress
         "Source Email"         = $MoeraAddress
         "Source Login Name"    = ""
         "Source Password"      = ""
