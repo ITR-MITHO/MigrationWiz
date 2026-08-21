@@ -1,9 +1,7 @@
 <#
-.SYNOPSIS
+
     Exchange Online Mailbox Information Export.
-.DESCRIPTION
-    Uses high-performance modern Exchange Online V3 cmdlets to retrieve 
-    mailbox statistics, archive data, and directory status via bulk operations.
+
 #>
 
 $CSVPATH = "$Home\Desktop\MailboxExport.csv"
