@@ -1,7 +1,9 @@
 <#
 .SYNOPSIS
     Exchange Online Mailbox Information Export.
-
+.DESCRIPTION
+    Uses high-performance modern Exchange Online V3 cmdlets to retrieve 
+    mailbox statistics, archive data, and directory status via bulk operations.
 #>
 
 $CSVPATH = "$Home\Desktop\MailboxExport.csv"
@@ -10,7 +12,6 @@ $Destination = Read-Host "Enter target MOERA domain (e.g. itm8exchangetest.onmic
 Write-Host "Starting data retrieval. Processing in bulk pipelines..." -ForegroundColor Yellow
 $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 Write-Host "Fetching basic mailbox structures..." -ForegroundColor Cyan
-
 
 $Mailboxes = Get-EXOMailbox -ResultSize Unlimited -Properties ExchangeGuid, EmailAddresses, RetentionPolicy, ForwardingAddress, IsDirSynced, ArchiveStatus `
     | Where-Object { $_.RecipientTypeDetails -ne "DiscoveryMailbox" }
@@ -28,7 +29,6 @@ $ArchiveTable = @{}
 
 Write-Host "Retrieving primary mailbox statistics in bulk..." -ForegroundColor Cyan
 $Mailboxes | Get-EXOMailboxStatistics | ForEach-Object {
-    # Using [string] cast instead of .ToString() to prevent null-value execution errors
     $StatsTable[[string]$_.MailboxGuid] = $_.TotalItemSize.Value.ToBytes()
 }
 
@@ -43,10 +43,14 @@ $Results = foreach ($Mailbox in $Mailboxes) {
     $PrimaryBytes = $StatsTable[$GuidString]
     $ArchiveBytes = $ArchiveTable[$GuidString]
     
-    $SizeInMB    = if ($PrimaryBytes) { [math]::Round($PrimaryBytes / 1MB, 3) } else { 0 }
-    $ArchiveInMB = if ($ArchiveBytes) { [math]::Round($ArchiveBytes / 1MB, 3) } else { "No Archive" }
+    # FIXED: Changed rounding to 0 decimal places to output whole numbers
+    $SizeInMB    = if ($PrimaryBytes) { [math]::Round($PrimaryBytes / 1MB, 0) } else { 0 }
+    $ArchiveInMB = if ($ArchiveBytes) { [math]::Round($ArchiveBytes / 1MB, 0) } else { "No Archive" }
+    
     $DirSync = if ($Mailbox.IsDirSynced -eq $true) { "Yes" } else { "No" }
-    $MoeraAddress = ($Mailbox.EmailAddresses | Where-Object { $_ -like "*onmicrosoft.com" }) -join ";"
+    
+    $MoeraAddress = ($Mailbox.EmailAddresses | Where-Object { $_ -like "*onmicrosoft.com" } | Select-Object -First 1) -replace '(?i)^smtp:', ''
+
     $DestinationEmail = if ($Mailbox.Alias -and $Destination) { "$($Mailbox.Alias)@$Destination" } else { "" }
 
     [PSCustomObject]@{
@@ -60,7 +64,6 @@ $Results = foreach ($Mailbox in $Mailboxes) {
         Forward                = $Mailbox.ForwardingAddress
         DirSync                = $DirSync
         MOERA                  = $MoeraAddress
-        Proxy                  = ($Mailbox.EmailAddresses -join ';')
         "Source Email"         = $MoeraAddress
         "Source Login Name"    = ""
         "Source Password"      = ""
@@ -68,11 +71,13 @@ $Results = foreach ($Mailbox in $Mailboxes) {
         "Destination Login Name" = ""
         "Destination Password" = ""
         Flags                  = ""
+        Proxy                  = ($Mailbox.EmailAddresses -join ';')
     }
 }
 
 Write-Host "Exporting to CSV..." -ForegroundColor Cyan
-$Results | Export-Csv $CSVPATH -NoTypeInformation -Encoding Unicode
+# FIXED: Added -UseCulture to force proper delimiter handling for Excel
+$Results | Export-Csv $CSVPATH -NoTypeInformation -Encoding Unicode -UseCulture
 
 $Stopwatch.Stop()
 Clear-Host
