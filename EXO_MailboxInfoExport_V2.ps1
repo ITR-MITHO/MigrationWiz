@@ -7,6 +7,7 @@
 #>
 
 $CSVPATH = "$Home\Desktop\MailboxExport.csv"
+$Customer = Read-Host "Enter customer name (e.g. itm8)"
 $Destination = Read-Host "Enter target MOERA domain (e.g. itm8exchangetest.onmicrosoft.com)"
 
 Write-Host "Starting data retrieval. Processing in bulk pipelines..." -ForegroundColor Yellow
