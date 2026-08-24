@@ -8,15 +8,15 @@
 $Customer = Read-Host "Enter customer name (e.g. itm8)"
 
 # Define Log File Paths
-$SuccessLogPath = "C:\temp\Successful_MOERA_Fixes.csv"
-$FailedLogPath  = "C:\temp\Failed_MOERA_Fixes.csv"
+$SuccessLogPath = "C:\Users\mitho\OneDrive - itm8\Skrivebord\Successful_MOERA_Fixes.csv"
+$FailedLogPath  = "C:\Users\mitho\OneDrive - itm8\Skrivebord\Failed_MOERA_Fixes.csv"
 
 # Initialize lists to hold log entries
 $SuccessMailboxes = [System.Collections.Generic.List[PSObject]]::new()
 $FailedMailboxes  = [System.Collections.Generic.List[PSObject]]::new()
 
 # Get the primary onmicrosoft.com domain as a string
-$MOERA = (Get-AcceptedDomain | Where-Object { $_.Name -like "*onmicrosoft.com" } | Select-Object -First 1).DomainName.Address
+$MOERA = (Get-AcceptedDomain | Where-Object { $_.Name -like "*onmicrosoft.com" } | Select-Object -last 1).DomainName
 
 # Fetch all mailboxes
 $Mailboxes = Get-Mailbox -ResultSize Unlimited
@@ -26,7 +26,7 @@ foreach ($M in $Mailboxes) {
     if (-not ($M.EmailAddresses -like "*$MOERA")) {
         
         # Define address to add
-        $NewAddress = "smtp:$($M.Alias)+$Customer@$MOERA"
+        $NewAddress = "smtp:$($M.Alias)$Customer@$MOERA"
         
         try {
             # -ErrorAction Stop ensures DirSync write-failures hit the Catch block
