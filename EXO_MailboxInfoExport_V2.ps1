@@ -55,6 +55,7 @@ $Results = foreach ($Mailbox in $Mailboxes) {
     $DestinationEmail = if ($Mailbox.Alias -and $Destination) { "$($Mailbox.Alias)@$Destination" } else { "" }
 
     [PSCustomObject]@{
+        Migrate                = ""
         Username               = $Mailbox.Alias
         Name                   = $Mailbox.DisplayName
         Email                  = $Mailbox.PrimarySmtpAddress
